@@ -1,9 +1,9 @@
-interface CounterAppContext extends Record<string, unknown> {
+interface CounterAppContext {
   count: number;
 }
 
 export class CounterApp extends foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2<CounterAppContext>
+  foundry.applications.api.ApplicationV2
 ) {
   private count = 0;
 

@@ -9,8 +9,15 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": ["@league-of-foundry-developers/foundry-vtt-types"],
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@common/*": ["./types/foundry/common/*"],
+      "@client/*": ["./types/foundry/client/*"]
+    }
   },
-  "include": ["src/**/*", "vite.config.ts"]
+  "include": [
+    "src/**/*",
+    "vite.config.ts",
+    "types/foundry/global-external.d.mts"
+  ]
 }
