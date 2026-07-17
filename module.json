@@ -1,0 +1,19 @@
+{
+  "id": "foundry-counters",
+  "title": "Foundry Counters",
+  "description": "A simple counter application for Foundry VTT",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12"
+  },
+  "esmodules": ["module.js"],
+  "styles": ["styles/foundry-counters.css"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ]
+}

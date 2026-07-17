@@ -1,0 +1,39 @@
+.counter-app {
+  padding: 1rem;
+}
+
+.counter-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.counter-display label {
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.counter-value {
+  font-size: 3rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  min-width: 4ch;
+  text-align: center;
+}
+
+.counter-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.counter-actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
