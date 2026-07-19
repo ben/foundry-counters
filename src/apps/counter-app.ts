@@ -102,7 +102,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
   foundry.applications.api.ApplicationV2
 ) {
   #onKey = (e: KeyboardEvent) => {
-    this.element?.classList.toggle("shift-controls", e.shiftKey);
+    this.element?.classList.toggle("shift-controls", e.altKey);
   };
 
   static override DEFAULT_OPTIONS = {
