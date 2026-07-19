@@ -165,6 +165,8 @@ Use only `@public` documented APIs. Private members (`_prefix`, `#private`) can 
 - **Handlebars context paths in nested loops**: `{{../parent.field}}` only goes up one level. Inside `#each outer` → `#each inner`, use `{{../../outer.field}}` or (better) flatten the data into the inner item so the template can reference `{{item.field}}` directly. (Was: `{{../group.docType}}` resolved to empty string inside nested `#each groups` → `#each group.counters`; fixed by adding `docType`/`docId` to each counter display object.)
 - **ApplicationV2 action handlers**: Static private methods (`static #method`) don't work as action handlers — ApplicationV2's action system can't call them. Use protected/public static methods (`static _method` or `static method`) instead. (Was: registered `#onAddCounter` as action handler; buttons rendered but clicks did nothing.)
 - **Handlebars helpers**: Don't use helpers that aren't registered (e.g. `capitalize`, `concat`). Either register them in the module init hook or prepare the data in `_prepareContext` so the template can use plain `{{value}}`. (Was: template used `{{capitalize counter.type}}` which threw "Missing helper" error.)
+- Assume that a dev server is running on port 30001, only use `pnpm start` if you detect that it's not
+- There's an installation of Foundry's node server at ../FoundryVTT-Node-14
 
 ## Resources
 

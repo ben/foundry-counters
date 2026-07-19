@@ -503,14 +503,29 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
           default: true,
           callback: (event: Event, button: HTMLButtonElement, dialog: HTMLDialogElement) => {
             const form = button.form;
-            if (!form) return null;
+            if (!form) return false;
+
             const formData = new FormData(form);
-            const name = formData.get("name") as string;
-            const key = formData.get("key") as string;
+            const name = (formData.get("name") as string)?.trim();
+            const key = (formData.get("key") as string)?.trim();
             const type = (formData.get("type") as string) ||
               (existing?.type ?? "number");
 
-            if (!name || !key) return null;
+            if (!name) {
+              ui.notifications?.error(game.i18n.localize("COUNTER.NameRequired"));
+              return false;
+            }
+
+            if (!key) {
+              ui.notifications?.error(game.i18n.localize("COUNTER.KeyRequired"));
+              return false;
+            }
+
+            // Validate key format
+            if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+              ui.notifications?.error(game.i18n.localize("COUNTER.KeyInvalid"));
+              return false;
+            }
 
             // Check key uniqueness
             const counters = getCounters(bucket);
@@ -518,8 +533,8 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
               (!isEdit || key !== existing.key) &&
               key in counters
             ) {
-              console.error(game.i18n.localize("COUNTER.KeyExists"));
-              return null;
+              ui.notifications?.error(game.i18n.localize("COUNTER.KeyExists"));
+              return false;
             }
 
             if (type === "number") {
@@ -541,8 +556,8 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
                   return { label: label?.trim() ?? "", color: color?.trim() ?? "" };
                 });
               if (states.length === 0) {
-                console.error(game.i18n.localize("COUNTER.StatesRequired"));
-                return null;
+                ui.notifications?.error(game.i18n.localize("COUNTER.StatesRequired"));
+                return false;
               }
               return {
                 key,
@@ -572,6 +587,12 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
         const typeSelect = html.querySelector<HTMLSelectElement>(
           'select[name="type"]'
         );
+        const nameInput = html.querySelector<HTMLInputElement>(
+          'input[name="name"]'
+        );
+        const keyInput = html.querySelector<HTMLInputElement>(
+          'input[name="key"]'
+        );
         const typeGroups = {
           number: html.querySelectorAll(".type-number"),
           toggle: html.querySelectorAll(".type-toggle"),
@@ -585,6 +606,23 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
               (el as HTMLElement).style.display =
                 type === selected ? "block" : "none";
             });
+          }
+        });
+
+        nameInput?.addEventListener("blur", () => {
+          if (!keyInput || keyInput.value.trim()) return;
+          const name = nameInput.value.trim();
+          if (!name) return;
+
+          // Generate key from name: lowercase, replace spaces/special chars with underscore
+          const generatedKey = name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .replace(/^(\d)/, "_$1"); // prefix digit with underscore
+
+          if (generatedKey) {
+            keyInput.value = generatedKey;
           }
         });
       },
