@@ -1,9 +1,79 @@
 <div class="counter-app">
   {{#each groups as |group|}}
     <section class="counter-group">
-      <header class="group-header">
-        <h3>{{group.label}}</h3>
-        {{#if group.editable}}
+      {{#if group.label}}
+        <h3 class="group-label">{{group.label}}</h3>
+      {{/if}}
+      <div class="counter-boxes">
+        {{#each group.counters as |counter|}}
+          <div class="counter-box">
+            <span class="counter-name">{{counter.name}}</span>
+            <div class="counter-controls">
+              {{#if (eq counter.type "number")}}
+                <button
+                  type="button"
+                  class="number-adjust"
+                  data-action="numberDec"
+                  data-doc-type="{{counter.docType}}"
+                  data-doc-id="{{counter.docId}}"
+                  data-key="{{counter.key}}"
+                >
+                  <i class="fas fa-minus"></i>
+                </button>
+                <span class="counter-value">{{counter.displayValue}}</span>
+                <button
+                  type="button"
+                  class="number-adjust"
+                  data-action="numberInc"
+                  data-doc-type="{{counter.docType}}"
+                  data-doc-id="{{counter.docId}}"
+                  data-key="{{counter.key}}"
+                >
+                  <i class="fas fa-plus"></i>
+                </button>
+              {{else if (eq counter.type "toggle")}}
+                <button
+                  type="button"
+                  class="toggle-value"
+                  data-action="toggleCycle"
+                  data-doc-type="{{counter.docType}}"
+                  data-doc-id="{{counter.docId}}"
+                  data-key="{{counter.key}}"
+                  style="{{#if counter.currentState.color}}color: {{counter.currentState.color}};{{/if}}"
+                >
+                  {{counter.displayValue}}
+                </button>
+              {{else}}
+                <span class="counter-value calculated">{{counter.displayValue}}</span>
+              {{/if}}
+            </div>
+            <div class="counter-actions">
+              <button
+                type="button"
+                class="edit-counter"
+                data-action="editCounter"
+                data-doc-type="{{counter.docType}}"
+                data-doc-id="{{counter.docId}}"
+                data-key="{{counter.key}}"
+                title="{{localize "COUNTER.Edit"}}"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                type="button"
+                class="delete-counter"
+                data-action="deleteCounter"
+                data-doc-type="{{counter.docType}}"
+                data-doc-id="{{counter.docId}}"
+                data-key="{{counter.key}}"
+                title="{{localize "COUNTER.Delete"}}"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        {{/each}}
+        <div class="add-box">
           <button
             type="button"
             class="add-counter"
@@ -11,102 +81,13 @@
             data-doc-type="{{group.docType}}"
             data-doc-id="{{group.docId}}"
           >
-            <i class="fas fa-plus"></i> {{localize "COUNTER.Add"}}
+            <i class="fas fa-plus"></i>
           </button>
-        {{/if}}
-      </header>
-      <div class="counter-list">
-        {{#if group.counters.length}}
-          {{#each group.counters as |counter|}}
-            <div class="counter-row">
-              <div class="counter-info">
-                <span class="counter-name">{{counter.name}}</span>
-                <span class="counter-type-badge">{{counter.typeLabel}}</span>
-              </div>
-              <div class="counter-value-display">
-                {{#if (eq counter.type "number")}}
-                  {{#if counter.editable}}
-                    <button
-                      type="button"
-                      class="number-adjust"
-                      data-action="numberDec"
-                      data-doc-type="{{counter.docType}}"
-                      data-doc-id="{{counter.docId}}"
-                      data-key="{{counter.key}}"
-                    >
-                      <i class="fas fa-minus"></i>
-                    </button>
-                  {{/if}}
-                  <span class="counter-value">{{counter.displayValue}}</span>
-                  {{#if counter.editable}}
-                    <button
-                      type="button"
-                      class="number-adjust"
-                      data-action="numberInc"
-                      data-doc-type="{{counter.docType}}"
-                      data-doc-id="{{counter.docId}}"
-                      data-key="{{counter.key}}"
-                    >
-                      <i class="fas fa-plus"></i>
-                    </button>
-                  {{/if}}
-                {{else if (eq counter.type "toggle")}}
-                  {{#if counter.editable}}
-                    <button
-                      type="button"
-                      class="toggle-value"
-                      data-action="toggleCycle"
-                      data-doc-type="{{counter.docType}}"
-                      data-doc-id="{{counter.docId}}"
-                      data-key="{{counter.key}}"
-                      style="{{#if counter.currentState.color}}color: {{counter.currentState.color}};{{/if}}"
-                    >
-                      {{counter.displayValue}}
-                    </button>
-                  {{else}}
-                    <span
-                      class="toggle-value readonly"
-                      style="{{#if counter.currentState.color}}color: {{counter.currentState.color}};{{/if}}"
-                    >
-                      {{counter.displayValue}}
-                    </span>
-                  {{/if}}
-                {{else}}
-                  <span class="counter-value calculated">{{counter.displayValue}}</span>
-                {{/if}}
-              </div>
-              {{#if counter.editable}}
-                <div class="counter-actions">
-                  <button
-                    type="button"
-                    class="edit-counter"
-                    data-action="editCounter"
-                    data-doc-type="{{counter.docType}}"
-                    data-doc-id="{{counter.docId}}"
-                    data-key="{{counter.key}}"
-                    title="{{localize "COUNTER.Edit"}}"
-                  >
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button
-                    type="button"
-                    class="delete-counter"
-                    data-action="deleteCounter"
-                    data-doc-type="{{counter.docType}}"
-                    data-doc-id="{{counter.docId}}"
-                    data-key="{{counter.key}}"
-                    title="{{localize "COUNTER.Delete"}}"
-                  >
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              {{/if}}
-            </div>
-          {{/each}}
-        {{else}}
-          <p class="empty-state">{{localize "COUNTER.NoCounters"}}</p>
-        {{/if}}
+        </div>
       </div>
+      {{#unless group.counters.length}}
+        <p class="empty-state">{{localize "COUNTER.NoCounters"}}</p>
+      {{/unless}}
     </section>
   {{/each}}
 </div>

@@ -51,6 +51,12 @@ interface TokenDescriptor {
   actor: Actor | undefined;
 }
 
+interface GroupDescriptor {
+  label: string;
+  bucket: Bucket;
+  actor: Actor | undefined;
+}
+
 function tokenStorageId(token: (typeof canvas.tokens.controlled)[number]): string {
   return token.document.actorLink
     ? (token.document.actorId as string)
@@ -95,6 +101,10 @@ function bucketFromDataset(target: HTMLElement): Bucket | null {
 export class CounterApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
+  #onKey = (e: KeyboardEvent) => {
+    this.element?.classList.toggle("shift-controls", e.shiftKey);
+  };
+
   static override DEFAULT_OPTIONS = {
     id: "counter-app",
     window: {
@@ -130,8 +140,16 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     await game.settings.set(MODULE_ID, WINDOW_OPEN_SETTING, true);
   }
 
+  protected override _onRender(context: object, options: any): void {
+    super._onRender(context, options);
+    window.addEventListener("keydown", this.#onKey);
+    window.addEventListener("keyup", this.#onKey);
+  }
+
   protected override _onClose(options: ApplicationClosingOptions): void {
     super._onClose(options);
+    window.removeEventListener("keydown", this.#onKey);
+    window.removeEventListener("keyup", this.#onKey);
     game.settings.set(MODULE_ID, WINDOW_OPEN_SETTING, false);
   }
 
@@ -165,30 +183,42 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     return controls;
   }
 
+  #getGroupDescriptors(): GroupDescriptor[] {
+    if (!game.user.isGM) {
+      // Player: single unlabeled row bound to their assigned actor
+      const character = game.user.character as Actor | null;
+      const bucket: Bucket = character
+        ? { kind: "token", id: character.id }
+        : { kind: "user" };
+      return [{ label: "", bucket, actor: character ?? undefined }];
+    }
+    // GM: own row (unlabeled) + one row per controlled token / assigned character
+    const descriptors: GroupDescriptor[] = [
+      { label: "", bucket: { kind: "user" }, actor: undefined },
+    ];
+    for (const token of getControlledTokens()) {
+      descriptors.push({
+        label: token.label,
+        bucket: { kind: "token", id: token.storageId },
+        actor: token.actor,
+      });
+    }
+    return descriptors;
+  }
+
   override async _prepareContext(options: any): Promise<CounterAppContext> {
     const groups: CounterGroup[] = [];
 
-    // User group
-    const userBucket: Bucket = { kind: "user" };
-    const userCounters = getCounters(userBucket);
-    groups.push({
-      label: game.i18n.localize("COUNTER.UserCounters"),
-      docType: "user",
-      docId: "",
-      editable: true,
-      counters: this.#prepareCounters(userCounters, userBucket, undefined),
-    });
-
-    // Token groups
-    for (const token of getControlledTokens()) {
-      const bucket: Bucket = { kind: "token", id: token.storageId };
-      const tokenCounters = getCounters(bucket);
+    for (const { label, bucket, actor } of this.#getGroupDescriptors()) {
+      const counters = getCounters(bucket);
+      const docType = bucket.kind;
+      const docId = bucket.kind === "token" ? bucket.id : "";
       groups.push({
-        label: token.label,
-        docType: "token",
-        docId: token.storageId,
+        label,
+        docType,
+        docId,
         editable: true,
-        counters: this.#prepareCounters(tokenCounters, bucket, token.actor),
+        counters: this.#prepareCounters(counters, bucket, actor),
       });
     }
 
@@ -363,9 +393,8 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     });
     if (!confirmed) return;
 
-    await clearCounters({ kind: "user" });
-    for (const token of getControlledTokens()) {
-      await clearCounters({ kind: "token", id: token.storageId });
+    for (const { bucket } of this.#getGroupDescriptors()) {
+      await clearCounters(bucket);
     }
     this.render();
   }
