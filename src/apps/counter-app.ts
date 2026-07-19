@@ -8,9 +8,14 @@ import {
 } from "../counters/storage.js";
 import { evaluateExpression } from "../counters/evaluate.js";
 import type {
+  ApplicationClosingOptions,
   ApplicationHeaderControlsEntry,
   ApplicationRenderContext,
 } from "@client/applications/_types.mjs";
+
+const MODULE_ID = "foundry-counters";
+const WINDOW_OPEN_SETTING = "windowOpen";
+const SIDEBAR_GAP = 20;
 
 interface CounterDisplay {
   key: string;
@@ -115,6 +120,39 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
       template: "modules/foundry-counters/templates/counter-app.hbs",
     },
   };
+
+  protected override async _onFirstRender(
+    context: object,
+    options: any
+  ): Promise<void> {
+    await super._onFirstRender(context, options);
+    this.#positionTopRight();
+    await game.settings.set(MODULE_ID, WINDOW_OPEN_SETTING, true);
+  }
+
+  protected override _onClose(options: ApplicationClosingOptions): void {
+    super._onClose(options);
+    game.settings.set(MODULE_ID, WINDOW_OPEN_SETTING, false);
+  }
+
+  #positionTopRight(): void {
+    const width =
+      typeof this.position.width === "number" ? this.position.width : 400;
+    const sidebar = document.getElementById("sidebar");
+
+    let left: number;
+    let top: number;
+    if (sidebar) {
+      const rect = sidebar.getBoundingClientRect();
+      left = rect.left - SIDEBAR_GAP - width;
+      top = rect.top + SIDEBAR_GAP;
+    } else {
+      left = window.innerWidth - width - SIDEBAR_GAP;
+      top = SIDEBAR_GAP;
+    }
+
+    this.setPosition({ left, top });
+  }
 
   protected override _getHeaderControls(): ApplicationHeaderControlsEntry[] {
     const controls = super._getHeaderControls();
