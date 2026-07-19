@@ -33,6 +33,10 @@ function getStore(): CounterStore {
 }
 
 async function saveStore(store: CounterStore): Promise<void> {
+  // setFlag merges recursively and never deletes absent keys, so a plain
+  // set would leave removed counters behind. Unset first to force a clean
+  // replacement.
+  await game.user.unsetFlag(SCOPE, KEY);
   await game.user.setFlag(SCOPE, KEY, store);
 }
 

@@ -132,7 +132,7 @@
 }
 
 .add-box {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   min-width: 4rem;
@@ -140,14 +140,10 @@
   border: 1px dashed var(--color-border-light-primary);
   border-radius: 3px;
   background: transparent;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.1s;
 }
 
 .shift-controls .add-box {
-  opacity: 1;
-  pointer-events: auto;
+  display: flex;
 }
 
 .add-counter {

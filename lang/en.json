@@ -3,7 +3,7 @@
   "COUNTER.OpenApp": "Open Counters",
   "COUNTER.UserCounters": "Your Counters",
   "COUNTER.UnnamedActor": "Unnamed Actor",
-  "COUNTER.NoCounters": "No counters yet. Click Add to create one.",
+  "COUNTER.NoCounters": "No counters yet. Hold the 'Alt' key and click '+' to create one.",
   "COUNTER.Add": "Add",
   "COUNTER.Edit": "Edit",
   "COUNTER.Delete": "Delete",
