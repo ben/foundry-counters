@@ -1,39 +1,187 @@
 .counter-app {
-  padding: 1rem;
-}
-
-.counter-display {
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
 }
 
-.counter-display label {
-  font-weight: bold;
-  text-transform: uppercase;
+.counter-group {
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-option);
+  border-bottom: 1px solid var(--color-border-light-primary);
+}
+
+.group-header h3 {
+  margin: 0;
   font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.add-counter {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.counter-list {
+  padding: 0.5rem;
+}
+
+.counter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 3px;
+  background: var(--color-bg-btn);
+  margin-bottom: 0.5rem;
+}
+
+.counter-row:last-child {
+  margin-bottom: 0;
+}
+
+.counter-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.counter-name {
+  font-weight: 500;
+}
+
+.counter-type-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.6;
+  letter-spacing: 0.5px;
+}
+
+.counter-value-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .counter-value {
-  font-size: 3rem;
+  font-size: 1.25rem;
   font-weight: bold;
   font-variant-numeric: tabular-nums;
-  min-width: 4ch;
+  min-width: 3ch;
   text-align: center;
+}
+
+.counter-value.calculated {
+  font-size: 1rem;
+  font-family: monospace;
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.number-adjust {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+.toggle-value {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.toggle-value:hover {
+  opacity: 0.8;
+}
+
+.toggle-value.readonly {
+  cursor: default;
+  padding: 0.25rem 0.5rem;
 }
 
 .counter-actions {
   display: flex;
-  gap: 0.5rem;
-  justify-content: center;
+  gap: 0.25rem;
 }
 
-.counter-actions button {
-  flex: 1;
+.edit-counter,
+.delete-counter {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.delete-counter {
+  color: var(--color-text-danger);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 1rem;
+  color: var(--color-text-light-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Dialog form styles */
+.counter-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.counter-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.counter-form input[type="text"],
+.counter-form input[type="number"],
+.counter-form select,
+.counter-form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 3px;
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
+.counter-form textarea {
+  font-family: monospace;
+  resize: vertical;
+}
+
+.counter-form .hint {
+  font-size: 0.75rem;
+  color: var(--color-text-light-secondary);
+  margin: 0.25rem 0 0 0;
+  font-style: italic;
 }

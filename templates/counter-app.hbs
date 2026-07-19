@@ -1,14 +1,112 @@
 <div class="counter-app">
-  <div class="counter-display">
-    <label>{{localize "COUNTER.Count"}}</label>
-    <span class="counter-value">{{count}}</span>
-  </div>
-  <div class="counter-actions">
-    <button type="button" data-action="increment">
-      <i class="fas fa-plus"></i> {{localize "COUNTER.Increment"}}
-    </button>
-    <button type="button" data-action="reset">
-      <i class="fas fa-undo"></i> {{localize "COUNTER.Reset"}}
-    </button>
-  </div>
+  {{#each groups as |group|}}
+    <section class="counter-group">
+      <header class="group-header">
+        <h3>{{group.label}}</h3>
+        {{#if group.editable}}
+          <button
+            type="button"
+            class="add-counter"
+            data-action="addCounter"
+            data-doc-type="{{group.docType}}"
+            data-doc-id="{{group.docId}}"
+          >
+            <i class="fas fa-plus"></i> {{localize "COUNTER.Add"}}
+          </button>
+        {{/if}}
+      </header>
+      <div class="counter-list">
+        {{#if group.counters.length}}
+          {{#each group.counters as |counter|}}
+            <div class="counter-row">
+              <div class="counter-info">
+                <span class="counter-name">{{counter.name}}</span>
+                <span class="counter-type-badge">{{counter.typeLabel}}</span>
+              </div>
+              <div class="counter-value-display">
+                {{#if (eq counter.type "number")}}
+                  {{#if counter.editable}}
+                    <button
+                      type="button"
+                      class="number-adjust"
+                      data-action="numberDec"
+                      data-doc-type="{{counter.docType}}"
+                      data-doc-id="{{counter.docId}}"
+                      data-key="{{counter.key}}"
+                    >
+                      <i class="fas fa-minus"></i>
+                    </button>
+                  {{/if}}
+                  <span class="counter-value">{{counter.displayValue}}</span>
+                  {{#if counter.editable}}
+                    <button
+                      type="button"
+                      class="number-adjust"
+                      data-action="numberInc"
+                      data-doc-type="{{counter.docType}}"
+                      data-doc-id="{{counter.docId}}"
+                      data-key="{{counter.key}}"
+                    >
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  {{/if}}
+                {{else if (eq counter.type "toggle")}}
+                  {{#if counter.editable}}
+                    <button
+                      type="button"
+                      class="toggle-value"
+                      data-action="toggleCycle"
+                      data-doc-type="{{counter.docType}}"
+                      data-doc-id="{{counter.docId}}"
+                      data-key="{{counter.key}}"
+                      style="{{#if counter.currentState.color}}color: {{counter.currentState.color}};{{/if}}"
+                    >
+                      {{counter.displayValue}}
+                    </button>
+                  {{else}}
+                    <span
+                      class="toggle-value readonly"
+                      style="{{#if counter.currentState.color}}color: {{counter.currentState.color}};{{/if}}"
+                    >
+                      {{counter.displayValue}}
+                    </span>
+                  {{/if}}
+                {{else}}
+                  <span class="counter-value calculated">{{counter.displayValue}}</span>
+                {{/if}}
+              </div>
+              {{#if counter.editable}}
+                <div class="counter-actions">
+                  <button
+                    type="button"
+                    class="edit-counter"
+                    data-action="editCounter"
+                    data-doc-type="{{counter.docType}}"
+                    data-doc-id="{{counter.docId}}"
+                    data-key="{{counter.key}}"
+                    title="{{localize "COUNTER.Edit"}}"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-counter"
+                    data-action="deleteCounter"
+                    data-doc-type="{{counter.docType}}"
+                    data-doc-id="{{counter.docId}}"
+                    data-key="{{counter.key}}"
+                    title="{{localize "COUNTER.Delete"}}"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        {{else}}
+          <p class="empty-state">{{localize "COUNTER.NoCounters"}}</p>
+        {{/if}}
+      </div>
+    </section>
+  {{/each}}
 </div>

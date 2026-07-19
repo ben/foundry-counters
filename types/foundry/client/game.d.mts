@@ -248,3 +248,7 @@ export default class Game<
     /** Activate Event Listeners which apply to every Game View */
     activateListeners(): void;
 }
+
+declare global {
+    const game: Game<Actor<null>, collections.Actors<Actor<null>>, ChatMessage, Combat, Item<null>, Macro, Scene, User>;
+}
