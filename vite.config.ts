@@ -1,7 +1,11 @@
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
-export default defineConfig({
+const FOUNDRY_PORT = 30000;
+
+export default defineConfig(({ command }) => ({
+  base: "/modules/foundry-counters/",
+
   build: {
     lib: {
       entry: "src/module.ts",
@@ -16,6 +20,7 @@ export default defineConfig({
       external: [],
     },
   },
+
   plugins: [
     viteStaticCopy({
       targets: [
@@ -25,5 +30,33 @@ export default defineConfig({
         { src: "lang", dest: "." },
       ],
     }),
+    ...(command === "serve"
+      ? [
+          {
+            name: "foundry-full-reload",
+            handleHotUpdate({ file, server }) {
+              if (/\.(hbs|json|css|ts|js)$/.test(file)) {
+                server.ws.send({ type: "full-reload", path: "*" });
+                return [];
+              }
+            },
+          },
+        ]
+      : []),
   ],
-});
+
+  ...(command === "serve"
+    ? {
+        server: {
+          port: 30001,
+          proxy: {
+            "^(?!/modules/foundry-counters)": `http://localhost:${FOUNDRY_PORT}/`,
+            "/socket.io": {
+              target: `ws://localhost:${FOUNDRY_PORT}`,
+              ws: true,
+            },
+          },
+        },
+      }
+    : {}),
+}));
