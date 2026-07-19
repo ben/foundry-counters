@@ -4,7 +4,7 @@ import {
   setCounter,
   deleteCounter,
   clearCounters,
-  canEdit,
+  type Bucket,
 } from "../counters/storage.js";
 import { evaluateExpression } from "../counters/evaluate.js";
 import type {
@@ -30,7 +30,7 @@ interface CounterDisplay {
 
 interface CounterGroup {
   label: string;
-  docType: "user" | "actor";
+  docType: "user" | "token";
   docId: string;
   editable: boolean;
   counters: CounterDisplay[];
@@ -40,23 +40,51 @@ interface CounterAppContext extends ApplicationRenderContext {
   groups: CounterGroup[];
 }
 
-function getControlledActors(): Actor[] {
-  const actors: Actor[] = [];
+interface TokenDescriptor {
+  storageId: string;
+  label: string;
+  actor: Actor | undefined;
+}
+
+function tokenStorageId(token: (typeof canvas.tokens.controlled)[number]): string {
+  return token.document.actorLink
+    ? (token.document.actorId as string)
+    : token.document.id;
+}
+
+function getControlledTokens(): TokenDescriptor[] {
+  const descriptors: TokenDescriptor[] = [];
   const seen = new Set<string>();
 
   for (const token of canvas.tokens.controlled) {
-    if (token.actor && !seen.has(token.actor.id)) {
-      actors.push(token.actor);
-      seen.add(token.actor.id);
-    }
+    const storageId = tokenStorageId(token);
+    if (seen.has(storageId)) continue;
+    seen.add(storageId);
+    descriptors.push({
+      storageId,
+      label: token.name ?? token.actor?.name ?? storageId,
+      actor: token.actor ?? undefined,
+    });
   }
 
   const character = game.user.character as Actor | null;
   if (character && !seen.has(character.id)) {
-    actors.push(character);
+    descriptors.push({
+      storageId: character.id,
+      label: character.name ?? game.i18n.localize("COUNTER.UnnamedActor"),
+      actor: character,
+    });
   }
 
-  return actors;
+  return descriptors;
+}
+
+function bucketFromDataset(target: HTMLElement): Bucket | null {
+  const docType = target.dataset.docType;
+  const docId = target.dataset.docId;
+  if (docType === "user") return { kind: "user" };
+  if (docType === "token" && docId) return { kind: "token", id: docId };
+  return null;
 }
 
 export class CounterApp extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -103,24 +131,26 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     const groups: CounterGroup[] = [];
 
     // User group
-    const userCounters = getCounters(game.user);
+    const userBucket: Bucket = { kind: "user" };
+    const userCounters = getCounters(userBucket);
     groups.push({
       label: game.i18n.localize("COUNTER.UserCounters"),
       docType: "user",
-      docId: game.user.id,
+      docId: "",
       editable: true,
-      counters: this.#prepareCounters(userCounters, game.user, "user", game.user.id),
+      counters: this.#prepareCounters(userCounters, userBucket, undefined),
     });
 
-    // Actor groups
-    for (const actor of getControlledActors()) {
-      const actorCounters = getCounters(actor);
+    // Token groups
+    for (const token of getControlledTokens()) {
+      const bucket: Bucket = { kind: "token", id: token.storageId };
+      const tokenCounters = getCounters(bucket);
       groups.push({
-        label: actor.name ?? game.i18n.localize("COUNTER.UnnamedActor"),
-        docType: "actor",
-        docId: actor.id,
-        editable: canEdit(actor),
-        counters: this.#prepareCounters(actorCounters, actor, "actor", actor.id),
+        label: token.label,
+        docType: "token",
+        docId: token.storageId,
+        editable: true,
+        counters: this.#prepareCounters(tokenCounters, bucket, token.actor),
       });
     }
 
@@ -129,12 +159,11 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
 
   #prepareCounters(
     counters: Record<string, Counter>,
-    doc: User | Actor,
-    docType: string,
-    docId: string
+    bucket: Bucket,
+    actor: Actor | undefined
   ): CounterDisplay[] {
-    const editable = canEdit(doc);
-    const actor = doc instanceof Actor ? doc : undefined;
+    const docType = bucket.kind;
+    const docId = bucket.kind === "token" ? bucket.id : "";
 
     return Object.values(counters).map((counter) => {
       const type = counter.type || "number";
@@ -145,7 +174,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
         type: type,
         typeLabel: game.i18n.localize(typeKey),
         displayValue: "",
-        editable,
+        editable: true,
         docType,
         docId,
       };
@@ -170,28 +199,17 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     });
   }
 
-  _getDocument(docType: string, docId: string): User | Actor | null {
-    if (docType === "user") {
-      return game.user;
-    }
-    return game.actors.get(docId) ?? null;
-  }
-
   static async _onAddCounter(
     this: CounterApp,
     event: Event,
     target: HTMLElement
   ): Promise<void> {
-    const docType = target.dataset.docType;
-    const docId = target.dataset.docId;
-    if (!docType || !docId) return;
+    const bucket = bucketFromDataset(target);
+    if (!bucket) return;
 
-    const doc = this._getDocument(docType, docId);
-    if (!doc || !canEdit(doc)) return;
-
-    const counter = await this._showCounterDialog(doc, null);
+    const counter = await this._showCounterDialog(bucket, null);
     if (counter) {
-      await setCounter(doc, counter);
+      await setCounter(bucket, counter);
       this.render();
     }
   }
@@ -201,25 +219,21 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     event: Event,
     target: HTMLElement
   ): Promise<void> {
-    const docType = target.dataset.docType;
-    const docId = target.dataset.docId;
+    const bucket = bucketFromDataset(target);
     const key = target.dataset.key;
-    if (!docType || !docId || !key) return;
+    if (!bucket || !key) return;
 
-    const doc = this._getDocument(docType, docId);
-    if (!doc || !canEdit(doc)) return;
-
-    const counters = getCounters(doc);
+    const counters = getCounters(bucket);
     const existing = counters[key];
     if (!existing) return;
 
-    const counter = await this._showCounterDialog(doc, existing);
+    const counter = await this._showCounterDialog(bucket, existing);
     if (counter) {
       // If key changed, delete old one
       if (counter.key !== existing.key) {
-        await deleteCounter(doc, existing.key);
+        await deleteCounter(bucket, existing.key);
       }
-      await setCounter(doc, counter);
+      await setCounter(bucket, counter);
       this.render();
     }
   }
@@ -229,13 +243,9 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     event: Event,
     target: HTMLElement
   ): Promise<void> {
-    const docType = target.dataset.docType;
-    const docId = target.dataset.docId;
+    const bucket = bucketFromDataset(target);
     const key = target.dataset.key;
-    if (!docType || !docId || !key) return;
-
-    const doc = this._getDocument(docType, docId);
-    if (!doc || !canEdit(doc)) return;
+    if (!bucket || !key) return;
 
     const confirmed = await foundry.applications.api.DialogV2.confirm({
       window: { title: game.i18n.localize("COUNTER.DeleteConfirmTitle") },
@@ -245,7 +255,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     });
 
     if (confirmed) {
-      await deleteCounter(doc, key);
+      await deleteCounter(bucket, key);
       this.render();
     }
   }
@@ -271,20 +281,16 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     target: HTMLElement,
     direction: number
   ): Promise<void> {
-    const docType = target.dataset.docType;
-    const docId = target.dataset.docId;
+    const bucket = bucketFromDataset(target);
     const key = target.dataset.key;
-    if (!docType || !docId || !key) return;
+    if (!bucket || !key) return;
 
-    const doc = this._getDocument(docType, docId);
-    if (!doc || !canEdit(doc)) return;
-
-    const counters = getCounters(doc);
+    const counters = getCounters(bucket);
     const counter = counters[key];
     if (!counter || counter.type !== "number") return;
 
     counter.value += counter.step * direction;
-    await setCounter(doc, counter);
+    await setCounter(bucket, counter);
     this.render();
   }
 
@@ -293,20 +299,16 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     event: Event,
     target: HTMLElement
   ): Promise<void> {
-    const docType = target.dataset.docType;
-    const docId = target.dataset.docId;
+    const bucket = bucketFromDataset(target);
     const key = target.dataset.key;
-    if (!docType || !docId || !key) return;
+    if (!bucket || !key) return;
 
-    const doc = this._getDocument(docType, docId);
-    if (!doc || !canEdit(doc)) return;
-
-    const counters = getCounters(doc);
+    const counters = getCounters(bucket);
     const counter = counters[key];
     if (!counter || counter.type !== "toggle") return;
 
     counter.index = (counter.index + 1) % counter.states.length;
-    await setCounter(doc, counter);
+    await setCounter(bucket, counter);
     this.render();
   }
 
@@ -323,17 +325,15 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     });
     if (!confirmed) return;
 
-    await clearCounters(game.user);
-    for (const actor of getControlledActors()) {
-      if (canEdit(actor)) {
-        await clearCounters(actor);
-      }
+    await clearCounters({ kind: "user" });
+    for (const token of getControlledTokens()) {
+      await clearCounters({ kind: "token", id: token.storageId });
     }
     this.render();
   }
 
   async _showCounterDialog(
-    doc: User | Actor,
+    bucket: Bucket,
     existing: Counter | null
   ): Promise<Counter | null> {
     const isEdit = existing !== null;
@@ -401,7 +401,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
             if (!name || !key) return null;
 
             // Check key uniqueness
-            const counters = getCounters(doc);
+            const counters = getCounters(bucket);
             if (
               (!isEdit || key !== existing.key) &&
               key in counters
