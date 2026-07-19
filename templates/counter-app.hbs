@@ -1,10 +1,14 @@
 <div class="counter-app">
   {{#each groups as |group|}}
+    {{#unless @first}}
+      <hr class="group-separator" />
+    {{/unless}}
     <section class="counter-group">
-      {{#if group.label}}
-        <h3 class="group-label">{{group.label}}</h3>
+      {{#if group.img}}
+        <img class="group-portrait" src="{{group.img}}" alt="{{group.label}}" />
       {{/if}}
-      <div class="counter-boxes">
+      <div class="group-body">
+        <div class="counter-boxes">
         {{#each group.counters as |counter|}}
           <div class="counter-box">
             <span class="counter-name">{{counter.name}}</span>
@@ -88,6 +92,7 @@
       {{#unless group.counters.length}}
         <p class="empty-state">{{localize "COUNTER.NoCounters"}}</p>
       {{/unless}}
+      </div>
     </section>
   {{/each}}
 </div>

@@ -39,6 +39,7 @@ interface CounterGroup {
   docId: string;
   editable: boolean;
   counters: CounterDisplay[];
+  img?: string;
 }
 
 interface CounterAppContext extends ApplicationRenderContext {
@@ -49,12 +50,14 @@ interface TokenDescriptor {
   storageId: string;
   label: string;
   actor: Actor | undefined;
+  tokenImg: string | undefined;
 }
 
 interface GroupDescriptor {
   label: string;
   bucket: Bucket;
   actor: Actor | undefined;
+  tokenImg: string | undefined;
 }
 
 function tokenStorageId(token: (typeof canvas.tokens.controlled)[number]): string {
@@ -75,6 +78,7 @@ function getControlledTokens(): TokenDescriptor[] {
       storageId,
       label: token.name ?? token.actor?.name ?? storageId,
       actor: token.actor ?? undefined,
+      tokenImg: token.document.texture.src,
     });
   }
 
@@ -84,6 +88,7 @@ function getControlledTokens(): TokenDescriptor[] {
       storageId: character.id,
       label: character.name ?? game.i18n.localize("COUNTER.UnnamedActor"),
       actor: character,
+      tokenImg: undefined,
     });
   }
 
@@ -130,6 +135,16 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
       template: "modules/foundry-counters/templates/counter-app.hbs",
     },
   };
+
+  override async close(
+    options: ApplicationClosingOptions = {}
+  ): Promise<this> {
+    // Foundry's global Escape keybinding closes every framed app via
+    // close({ closeKey: true }). Ignore those so the counter panel persists;
+    // intentional closes (toolbar toggle, header X) omit closeKey.
+    if (options.closeKey) return this;
+    return super.close(options);
+  }
 
   protected override async _onFirstRender(
     context: object,
@@ -190,26 +205,40 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
       const bucket: Bucket = character
         ? { kind: "token", id: character.id }
         : { kind: "user" };
-      return [{ label: "", bucket, actor: character ?? undefined }];
+      return [{ label: "", bucket, actor: character ?? undefined, tokenImg: undefined }];
     }
     // GM: own row (unlabeled) + one row per controlled token / assigned character
     const descriptors: GroupDescriptor[] = [
-      { label: "", bucket: { kind: "user" }, actor: undefined },
+      { label: "", bucket: { kind: "user" }, actor: undefined, tokenImg: undefined },
     ];
     for (const token of getControlledTokens()) {
       descriptors.push({
         label: token.label,
         bucket: { kind: "token", id: token.storageId },
         actor: token.actor,
+        tokenImg: token.tokenImg,
       });
     }
     return descriptors;
   }
 
+  #actorForBucket(bucket: Bucket): Actor | undefined {
+    const descriptors = this.#getGroupDescriptors();
+    for (const desc of descriptors) {
+      if (bucket.kind === "user" && desc.bucket.kind === "user") {
+        return desc.actor;
+      }
+      if (bucket.kind === "token" && desc.bucket.kind === "token" && desc.bucket.id === bucket.id) {
+        return desc.actor;
+      }
+    }
+    return undefined;
+  }
+
   override async _prepareContext(options: any): Promise<CounterAppContext> {
     const groups: CounterGroup[] = [];
 
-    for (const { label, bucket, actor } of this.#getGroupDescriptors()) {
+    for (const { label, bucket, actor, tokenImg } of this.#getGroupDescriptors()) {
       const counters = getCounters(bucket);
       const docType = bucket.kind;
       const docId = bucket.kind === "token" ? bucket.id : "";
@@ -219,6 +248,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
         docId,
         editable: true,
         counters: this.#prepareCounters(counters, bucket, actor),
+        img: tokenImg,
       });
     }
 
@@ -256,11 +286,15 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
         display.displayValue = state?.label ?? "";
         display.currentState = state;
       } else if (counter.type === "calculated") {
-        display.displayValue = evaluateExpression(
-          counter.expression,
-          counters,
-          actor
-        );
+        if (actor) {
+          display.displayValue = evaluateExpression(
+            counter.expression,
+            counters,
+            actor
+          );
+        } else {
+          display.displayValue = game.i18n.localize("COUNTER.CalculatedNeedsActor");
+        }
       }
 
       return display;
@@ -275,7 +309,8 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     const bucket = bucketFromDataset(target);
     if (!bucket) return;
 
-    const counter = await this._showCounterDialog(bucket, null);
+    const allowCalculated = !!this.#actorForBucket(bucket);
+    const counter = await this._showCounterDialog(bucket, null, allowCalculated);
     if (counter) {
       await setCounter(bucket, counter);
       this.render();
@@ -295,7 +330,8 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
     const existing = counters[key];
     if (!existing) return;
 
-    const counter = await this._showCounterDialog(bucket, existing);
+    const allowCalculated = !!this.#actorForBucket(bucket);
+    const counter = await this._showCounterDialog(bucket, existing, allowCalculated);
     if (counter) {
       // If key changed, delete old one
       if (counter.key !== existing.key) {
@@ -401,12 +437,25 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
 
   async _showCounterDialog(
     bucket: Bucket,
-    existing: Counter | null
+    existing: Counter | null,
+    allowCalculated: boolean
   ): Promise<Counter | null> {
     const isEdit = existing !== null;
     const title = game.i18n.localize(
       isEdit ? "COUNTER.EditCounter" : "COUNTER.AddCounter"
     );
+
+    const calculatedOption = allowCalculated
+      ? `<option value="calculated" ${existing?.type === "calculated" ? "selected" : ""}>${game.i18n.localize("COUNTER.TypeCalculated")}</option>`
+      : "";
+
+    const calculatedFields = allowCalculated
+      ? `<div class="form-group type-calculated" style="display: ${existing?.type === "calculated" ? "block" : "none"}">
+          <label>${game.i18n.localize("COUNTER.Expression")}</label>
+          <input type="text" name="calculated-expr" value="${existing?.type === "calculated" ? existing.expression : ""}" />
+          <p class="hint">${game.i18n.localize("COUNTER.ExpressionHint")}</p>
+        </div>`
+      : "";
 
     const content = `
       <form class="counter-form">
@@ -424,7 +473,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
           <select name="type" ${isEdit ? "disabled" : ""}>
             <option value="number" ${existing?.type === "number" ? "selected" : ""}>${game.i18n.localize("COUNTER.TypeNumber")}</option>
             <option value="toggle" ${existing?.type === "toggle" ? "selected" : ""}>${game.i18n.localize("COUNTER.TypeToggle")}</option>
-            <option value="calculated" ${existing?.type === "calculated" ? "selected" : ""}>${game.i18n.localize("COUNTER.TypeCalculated")}</option>
+            ${calculatedOption}
           </select>
         </div>
         <div class="form-group type-number" style="display: ${existing?.type === "number" || !existing ? "block" : "none"}">
@@ -440,11 +489,7 @@ export class CounterApp extends foundry.applications.api.HandlebarsApplicationMi
           <textarea name="toggle-states" rows="4">${existing?.type === "toggle" ? existing.states.map((s) => `${s.label}:${s.color}`).join("\n") : ""}</textarea>
           <p class="hint">${game.i18n.localize("COUNTER.StatesHint")}</p>
         </div>
-        <div class="form-group type-calculated" style="display: ${existing?.type === "calculated" ? "block" : "none"}">
-          <label>${game.i18n.localize("COUNTER.Expression")}</label>
-          <input type="text" name="calculated-expr" value="${existing?.type === "calculated" ? existing.expression : ""}" />
-          <p class="hint">${game.i18n.localize("COUNTER.ExpressionHint")}</p>
-        </div>
+        ${calculatedFields}
       </form>
     `;
 
