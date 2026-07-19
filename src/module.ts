@@ -51,6 +51,27 @@ Hooks.on("controlToken", () => {
   }
 });
 
+// Re-render when actor data changes (to update calculated counters)
+Hooks.on("updateActor", () => {
+  if (counterApp?.rendered) {
+    counterApp.render();
+  }
+});
+
+// Re-render when combat state changes (flags, turn, round)
+Hooks.on("updateCombat", () => {
+  if (counterApp?.rendered) {
+    counterApp.render();
+  }
+});
+
+// Re-render when token document data changes (unlinked tokens)
+Hooks.on("updateToken", () => {
+  if (counterApp?.rendered) {
+    counterApp.render();
+  }
+});
+
 Hooks.once("ready", () => {
   console.log("Foundry Counters | Ready");
 

@@ -3,36 +3,28 @@ import type { Counter } from "./types.js";
 export function evaluateExpression(
   expression: string,
   counters: Record<string, Counter>,
-  actor?: Actor
+  actor: Actor
 ): string {
   try {
-    const scope: Record<string, unknown> = {};
-
-    // Add resolved non-calculated counter values
+    // Build counter data namespace
+    const counterData: Record<string, number | string> = {};
     for (const [key, counter] of Object.entries(counters)) {
       if (counter.type === "number") {
-        scope[key] = counter.value;
+        counterData[key] = counter.value;
       } else if (counter.type === "toggle") {
         const state = counter.states[counter.index];
-        scope[key] = state?.label ?? "";
+        counterData[key] = state?.label ?? "";
       }
       // Skip calculated counters to avoid cycles
     }
 
-    // Add actor roll data if available
-    if (actor) {
-      const rollData = actor.getRollData();
-      Object.assign(scope, rollData);
-    }
+    // Merge actor roll data with counters namespace
+    const data = { ...actor.getRollData(), counters: counterData };
 
-    // Evaluate with `with` statement to allow bare key references
-    const fn = new Function(
-      "scope",
-      `with(scope){ return (${expression}); }`
-    );
-    const result = fn(scope);
-
-    return String(result);
+    // Evaluate using Foundry's Roll evaluator
+    const roll = new Roll(expression, data);
+    roll.evaluateSync();
+    return String(roll.total);
   } catch (err) {
     return `Error: ${err instanceof Error ? err.message : String(err)}`;
   }
